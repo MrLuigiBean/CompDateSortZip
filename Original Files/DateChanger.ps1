@@ -5,13 +5,16 @@ Sources :D
 	https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.management/get-childitem?view=powershell-7.4
 	https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_properties?view=powershell-7.4#object-properties
 	https://learn.microsoft.com/en-us/dotnet/api/system.string.insert?view=net-8.0
+	https://learn.microsoft.com/en-us/dotnet/api/system.datetime.-ctor?view=net-8.0#system-datetime-ctor(system-int32-system-int32-system-int32-system-int32-system-int32-system-int32)
+	https://stackoverflow.com/a/27376469
+	https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_classes_constructors?view=powershell-7.4#example-1---defining-a-class-with-the-default-constructor
+	https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_comparison_operators?view=powershell-7.4#-gt--ge--lt-and--le
 #>
 
 Write-Host ""
 
-$space = " "
-$colon = ":"
-$hyphen = "-"
+# Check if there are enough numbers in the filename for YYYYMMDDHHMMSS <- 14
+$expectedDigitCount = 14
 
 $stuff = Get-ChildItem ./target/*
 
@@ -20,63 +23,69 @@ ForEach ($file in $stuff)
 	$filename = ($file).Name
 	Write-Host $filename
 
-	<#
-	# Switch filename: 2023050219400400-A862246CB76B2B6DC14022F4545399F5
+	$digitsCount = 0
+	$howManyAreIn = 0 # I don't know what to name this variable...
 
-	$filenameDate = $filename.substring(0, 14)
-	Write-Host $filenameDate
+	# Six numbers - year, month, day, hour, minute, second
+	$numbersArray = "", "", "", "", "", ""
+	$numberLengthArray = 4, 2, 2, 2, 2, 2
+	$numbersArrayIndex = 0
 
-	# insertions are in reverse order due to them making the indices change otherwise
-	$filenameDate = $filenameDate.Insert(12, $colon)
-	$filenameDate = $filenameDate.Insert(10, $colon)
-	$filenameDate = $filenameDate.Insert(8, $space)
-	$filenameDate = $filenameDate.Insert(6, $hyphen)
-	$filenameDate = $filenameDate.Insert(4, $hyphen)
-	#>
+	# Obtain numbers from filename
+	For ($i = 0; $i -lt $filename.Length; $i++) # comparison operators in powershell are DUMB.
+	{
+		$isCharDigit = [Char]::IsDigit($filename[$i])
+		if ($isCharDigit)
+		{
+			$digitsCount++;
+			
+			# If all 14 digits are found, skip finding more numbers.
+			if ($digitsCount -gt $expectedDigitCount)
+			{
+				Break
+			}
 
-	<#
-	# Phone screenshot filename: Screenshot_20231201-080729_X.jpg
+			$digitChar = $filename[$i]
+			
+			# Append incoming digitChar with existing string in the numbersArray
+			$numbersArray[$numbersArrayIndex] += $digitChar
+			$howManyAreIn++;
 
-	$filenameDate = $filename.substring(11, 15)
-	Write-Host $filenameDate
+			# Once howManyAreIn matches the expected length in numberLengthArray,
+			# work on the next number instead.
+			if ($howManyAreIn -ge $numberLengthArray[$numbersArrayIndex])
+			{
+				$numbersArrayIndex++
+				$howManyAreIn = 0
+			}
+		}
+	}
 
-	$filenameDate = $filenameDate.Remove(8, 1)
-	# insertions are in reverse order due to them making the indices change otherwise
-	$filenameDate = $filenameDate.Insert(12, $colon)
-	$filenameDate = $filenameDate.Insert(10, $colon)
-	$filenameDate = $filenameDate.Insert(8, $space)
-	$filenameDate = $filenameDate.Insert(6, $hyphen)
-	$filenameDate = $filenameDate.Insert(4, $hyphen)
-	#>
+	# Not enough numbers in the filename to create a date & time? Skip this file.
+	if ($digitsCount -lt $expectedDigitCount)
+	{
+		$msg = "Skipped file: "
+		$msg += $filename
+		Write-Host $msg
+		Write-Host ""
+		Continue
+	}
+	
+	Write-Host $file.CreationTime
+	Write-Host $file.LastWriteTime
 
-	<#
-	# Phone camera filename: 20230426_133807.mp4
-	#>
-
-	$filenameDate = $filename.substring(0, 15)
-	Write-Host $filenameDate
-
-	$filenameDate = $filenameDate.Remove(8, 1)
-	# insertions are in reverse order due to them making the indices change otherwise
-	$filenameDate = $filenameDate.Insert(12, $colon)
-	$filenameDate = $filenameDate.Insert(10, $colon)
-	$filenameDate = $filenameDate.Insert(8, $space)
-	$filenameDate = $filenameDate.Insert(6, $hyphen)
-	$filenameDate = $filenameDate.Insert(4, $hyphen)
-
-	Write-Host $filenameDate
-
-	Write-Host ($file).CreationTime
-	Write-Host ($file).LastWriteTime
+	$filenameDateTime = [System.DateTime]::new(
+		$numbersArray[0], $numbersArray[1], $numbersArray[2],
+		$numbersArray[3], $numbersArray[4], $numbersArray[5])
 
 	# THIS IS WHERE THE GOOD STUFF HAPPENS
 	Write-Host "==================================="
-	($file).CreationTime = $filenameDate
-	($file).LastWriteTime = $filenameDate
+	$file.CreationTime = $filenameDateTime
+	$file.LastWriteTime = $filenameDateTime
 
-	Write-Host ($file).CreationTime
-	Write-Host ($file).LastWriteTime
-
+	Write-Host $file.CreationTime
+	Write-Host $file.LastWriteTime
+	
 	Write-Host ""
 }
 
